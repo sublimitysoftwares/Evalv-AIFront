@@ -1,65 +1,31 @@
 .application-form-container {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   min-height: 100vh;
-  padding: 2rem;
-  background: radial-gradient(circle at 10% 20%, rgb(239, 246, 255) 0%, rgb(219, 234, 254) 90%);
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.application-form-header h1 {
-  font-size: 2.2rem;
-  margin: 0;
-  background: linear-gradient(135deg, #1e293b 0%, #007bff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
-/* Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes float {
-  0% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-10px);
-  }
-
-  100% {
-    transform: translateY(0px);
-  }
+  padding: 0 2rem 2rem 2rem;
+  background-color: #f5f5f5;
+  overflow-y: auto;
+  max-height: 100vh;
 }
 
 .application-form {
-  background: rgba(255, 255, 255, 0.15);
-  /* More transparent */
-  backdrop-filter: blur(20px);
-  /* Stronger blur */
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 2.5rem;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  background: white;
+  padding: 1.5rem 2.5rem 2.5rem 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 600px;
-  animation: fadeInUp 0.8s ease-out, float 6s ease-in-out infinite;
+  margin: auto;
+  overflow-y: auto;
+}
+
+.form-title {
+  margin: 0 0 2rem 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #333;
+  text-align: center;
 }
 
 .form-group {

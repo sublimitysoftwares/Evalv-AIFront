@@ -8,8 +8,8 @@ const Navbar = () => {
   const location = useLocation()
   const authenticated = isAuthenticated()
 
-  // Don't show navbar on login page
-  if (location.pathname === '/login') {
+  // Don't show navbar on login page, test page, or thank you page
+  if (location.pathname === '/login' || location.pathname.startsWith('/test/') || location.pathname === '/thank-you') {
     return null
   }
 
