@@ -37,25 +37,25 @@ const ApplicationForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Basic validation
     if (!name.trim()) {
       AlertModal.warning('Please enter your name', 3000)
       return
     }
-    
+
     if (!email.trim()) {
       AlertModal.warning('Please enter your email', 3000)
       return
     }
-    
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       AlertModal.warning('Please enter a valid email address', 3000)
       return
     }
-    
+
     if (!selectedJobDescription) {
       AlertModal.warning('Please select a job description', 3000)
       return
@@ -68,7 +68,7 @@ const ApplicationForm = () => {
         email_address: email.trim(),
         tblDomainJobDescription_id: selectedJobDescription,
       })
-      
+
       if (response.data.success) {
         AlertModal.success(response.data.message || 'Application submitted successfully!', 5000)
         setName('')

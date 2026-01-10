@@ -4,6 +4,7 @@ import axios from 'axios'
 import './Login.css'
 import { AlertModal } from '../../utils/alertHelper'
 import Loader from '../../components/Loader/Loader'
+import logo from '../../assets/login-logo.png'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -21,18 +22,18 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Basic validation
     if (!email.trim()) {
       AlertModal.warning('Please enter your email', 3000)
       return
     }
-    
+
     if (!password.trim()) {
       AlertModal.warning('Please enter your password', 3000)
       return
     }
-    
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
@@ -46,7 +47,7 @@ const Login = () => {
         email: email.trim(),
         password: password.trim(),
       })
-      
+
       if (response.data.success) {
         // Store token in localStorage
         const token = response.data.data?.token || response.data.token || response.data.data?.accessToken
@@ -56,20 +57,20 @@ const Login = () => {
           // If no token in response, still store a flag to indicate successful login
           localStorage.setItem('token', 'authenticated')
         }
-        
+
         // Store user data if available
         if (response.data.data?.user) {
           localStorage.setItem('user', JSON.stringify(response.data.data.user))
         } else if (response.data.user) {
           localStorage.setItem('user', JSON.stringify(response.data.user))
         }
-        
+
         AlertModal.success(response.data.message || 'Login successful!', 3000)
-        
+
         // Reset form
         setEmail('')
         setPassword('')
-        
+
         // Redirect to dashboard after successful login
         setTimeout(() => {
           navigate('/dashboard')
@@ -87,8 +88,11 @@ const Login = () => {
   return (
     <div className="login-container">
       <form className="login-form" onSubmit={handleSubmit}>
+        <div className="logo-container">
+          <img src={logo} alt="Sublimity AssessIQ" className="login-logo" />
+        </div>
         <h2 className="login-title">Login</h2>
-        
+
         <div className="form-group">
           <label htmlFor="email">Email</label>
           <input

@@ -8,7 +8,7 @@ import Loader from '../../components/Loader/Loader';
 const JobDescription = () => {
   const [domains, setDomains] = useState([])
   const [selectedDomain, setSelectedDomain] = useState<string>('')
-  const [requiredExperience, setRequiredExperience] = useState<number>(0)
+  const [requiredExperience, setRequiredExperience] = useState<number | ''>('')
   const [jobDescription, setJobDescription] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
 
@@ -30,19 +30,19 @@ const JobDescription = () => {
     }
   }
 
-  const handleSubmit = async(e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
       const response = await axios.post('http://192.168.1.45:3000/domain-job-description', {
         domain: selectedDomain,
-        required_exeperience: requiredExperience,
+        required_exeperience: Number(requiredExperience),
         job_description: jobDescription,
       })
       if (response.data.success) {
         AlertModal.success(response.data.message, 5000)
         setJobDescription('')
-        setRequiredExperience(0)
+        setRequiredExperience('')
         setSelectedDomain('')
       } else {
         AlertModal.error(response.data.message, 5000)
@@ -84,8 +84,9 @@ const JobDescription = () => {
             id="experience"
             className="form-input"
             value={requiredExperience}
-            onChange={(e) => setRequiredExperience(Number(e.target.value))}
+            onChange={(e) => setRequiredExperience(e.target.value === '' ? '' : Number(e.target.value))}
             min="0"
+            placeholder="Enter Experience"
           />
         </div>
 
