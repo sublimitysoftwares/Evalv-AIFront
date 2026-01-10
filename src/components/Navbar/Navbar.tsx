@@ -1,4 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import logo from '../../assets/logo.png'
 import { isAuthenticated, removeToken } from '../../utils/auth'
 import './Navbar.css'
 
@@ -21,26 +22,28 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-brand">
-          <Link to={authenticated ? "/dashboard" : "/"}>Evalv-AI</Link>
+          <Link to={authenticated ? "/dashboard" : "/"}>
+            <img src={logo} alt="Evalv-AI" className="navbar-logo" />
+          </Link>
         </div>
-        
+
         <div className="navbar-menu">
           {authenticated ? (
             <>
-              <Link 
-                to="/dashboard" 
+              <Link
+                to="/dashboard"
                 className={location.pathname === '/dashboard' ? 'active' : ''}
               >
                 Dashboard
               </Link>
-              <Link 
-                to="/job-description" 
+              <Link
+                to="/job-description"
                 className={location.pathname === '/job-description' ? 'active' : ''}
               >
                 Job Description
               </Link>
-              <Link 
-                to="/application" 
+              <Link
+                to="/application"
                 className={location.pathname === '/application' ? 'active' : ''}
               >
                 Application Form
@@ -51,14 +54,14 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Link 
-                to="/login" 
+              <Link
+                to="/login"
                 className={location.pathname === '/login' ? 'active' : ''}
               >
                 Login
               </Link>
-              <Link 
-                to="/application" 
+              <Link
+                to="/application"
                 className={location.pathname === '/application' ? 'active' : ''}
               >
                 Apply

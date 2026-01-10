@@ -36,25 +36,25 @@ const ApplicationForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Basic validation
     if (!name.trim()) {
       AlertModal.warning('Please enter your name', 3000)
       return
     }
-    
+
     if (!email.trim()) {
       AlertModal.warning('Please enter your email', 3000)
       return
     }
-    
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       AlertModal.warning('Please enter a valid email address', 3000)
       return
     }
-    
+
     if (!selectedJobDescription) {
       AlertModal.warning('Please select a job description', 3000)
       return
@@ -67,7 +67,7 @@ const ApplicationForm = () => {
         email_address: email.trim(),
         tblDomainJobDescription_id: selectedJobDescription,
       })
-      
+
       if (response.data.success) {
         AlertModal.success(response.data.message || 'Application submitted successfully!', 5000)
         setLoading(false)
@@ -100,9 +100,11 @@ const ApplicationForm = () => {
 
   return (
     <div className="application-form-container">
+      <div className="application-form-header">
+        <h1>Application Form</h1>
+      </div>
       <form className="application-form" onSubmit={handleSubmit}>
-        <h2 className="form-title">Application Form</h2>
-        
+
         <div className="form-group">
           <label htmlFor="name">Name</label>
           <input
