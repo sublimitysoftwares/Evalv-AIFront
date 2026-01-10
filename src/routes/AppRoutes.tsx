@@ -3,6 +3,8 @@ import Login from '../pages/Login/Login'
 import JobDescription from '../pages/JobDescription/JobDescription'
 import ApplicationForm from '../pages/ApplicationForm/ApplicationForm'
 import Dashboard from '../pages/Dashboard/Dashboard'
+import Test from '../pages/Test/Test'
+import ThankYou from '../pages/ThankYou/ThankYou'
 import ProtectedRoute from '../components/ProtectedRoute/ProtectedRoute'
 import AuthCheck from '../components/AuthCheck/AuthCheck'
 import Navbar from '../components/Navbar/Navbar'
@@ -15,6 +17,8 @@ const AppRoutes = () => {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/test/:id" element={<Test />} />
+        <Route path="/thank-you" element={<ThankYou />} />
         
         {/* Protected Routes */}
         <Route

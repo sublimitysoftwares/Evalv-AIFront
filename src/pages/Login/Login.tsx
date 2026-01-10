@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import './Login.css'
 import { AlertModal } from '../../utils/alertHelper'
+import Loader from '../../components/Loader/Loader'
 
 const Login = () => {
   const navigate = useNavigate()

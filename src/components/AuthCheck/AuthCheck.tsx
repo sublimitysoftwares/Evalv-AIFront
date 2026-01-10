@@ -11,8 +11,8 @@ const AuthCheck = () => {
   const location = useLocation()
 
   useEffect(() => {
-    const publicRoutes = ['/login', '/application']
-    const isPublicRoute = publicRoutes.includes(location.pathname)
+    const publicRoutes = ['/login']
+    const isPublicRoute = publicRoutes.includes(location.pathname) || location.pathname.startsWith('/test/')
 
     // If not on a public route and not authenticated, redirect to login
     if (!isPublicRoute && !isAuthenticated()) {

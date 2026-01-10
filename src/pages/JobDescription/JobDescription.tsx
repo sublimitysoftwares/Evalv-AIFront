@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios';
 import './JobDescription.css';
 import { AlertModal } from '../../utils/alertHelper';
+import Loader from '../../components/Loader/Loader';
 
 
 const JobDescription = () => {
@@ -54,8 +55,10 @@ const JobDescription = () => {
   }
 
   return (
-    <div className="job-description-container">
-      <form className="job-description-form" onSubmit={handleSubmit}>
+    <>
+      {loading && <Loader message="Submitting..." />}
+      <div className="job-description-container">
+        <form className="job-description-form" onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="domain">Domain</label>
           <select
@@ -102,6 +105,7 @@ const JobDescription = () => {
         </button>
       </form>
     </div>
+    </>
   )
 }
 

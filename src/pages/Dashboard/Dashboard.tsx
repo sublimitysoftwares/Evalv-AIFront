@@ -1,11 +1,207 @@
+import { useState, useEffect } from 'react'
+import axios from 'axios'
+import './Dashboard.css'
+import Loader from '../../components/Loader/Loader'
+import { AlertModal } from '../../utils/alertHelper'
+
+interface TableRow {
+  domain: string
+  experience: number
+  percent: number
+  _id?: string
+}
+
 const Dashboard = () => {
+  const [tableData, setTableData] = useState<TableRow[]>([])
+  const [filteredData, setFilteredData] = useState<TableRow[]>([])
+  const [domains, setDomains] = useState<any[]>([])
+  const [loading, setLoading] = useState<boolean>(false)
+  const [filterDomain, setFilterDomain] = useState<string>('')
+  const [filterExperience, setFilterExperience] = useState<string>('')
+
+  useEffect(() => {
+    fetchDomains()
+    fetchTableData()
+  }, [])
+
+  useEffect(() => {
+    applyFilters()
+  }, [filterDomain, filterExperience, tableData])
+
+  const fetchDomains = async () => {
+    try {
+      const response = await axios.get('http://192.168.1.45:3000/domain-list')
+      if (response.data.success) {
+        setDomains(response.data.data)
+      }
+    } catch (error: any) {
+      console.error('Error fetching domains:', error)
+    }
+  }
+
+  const fetchTableData = async () => {
+    setLoading(true)
+    try {
+      // Replace this endpoint with your actual API endpoint for candidate statistics
+      const response = await axios.get('http://192.168.1.45:3000/candidate-answer')
+      
+      if (response.data.success) {
+        // Transform the data to match table structure
+        const transformedData = response.data.data.map((item: any) => ({
+          domain: item.tblDomainJobDescription_id?.domain?.domainName || item.domain || 'N/A',
+          experience: item.tblDomainJobDescription_id?.required_exeperience || item.experience || 0,
+          percent: item.AnswerScore || item.percent || 0,
+          _id: item._id
+        }))
+        setTableData(transformedData)
+      } else {
+        AlertModal.error(response.data.message || 'Failed to fetch data', 5000)
+      }
+    } catch (error: any) {
+      console.error('Error fetching table data:', error)
+      // For development, use mock data if API fails
+      const mockData: TableRow[] = [
+        { domain: 'Node.js', experience: 2, percent: 85 },
+        { domain: 'React', experience: 3, percent: 92 },
+        { domain: 'Python', experience: 2, percent: 78 },
+        { domain: 'Node.js', experience: 5, percent: 95 },
+        { domain: 'React', experience: 2, percent: 88 },
+        { domain: 'Python', experience: 4, percent: 90 },
+      ]
+      setTableData(mockData)
+      AlertModal.warning('Using mock data. Please configure the API endpoint.', 3000)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const applyFilters = () => {
+    let filtered = [...tableData]
+
+    // Filter by domain
+    if (filterDomain) {
+      filtered = filtered.filter(item => 
+        item.domain.toLowerCase().includes(filterDomain.toLowerCase())
+      )
+    }
+
+    // Filter by experience
+    if (filterExperience) {
+      const experienceValue = parseInt(filterExperience)
+      if (!isNaN(experienceValue)) {
+        filtered = filtered.filter(item => item.experience === experienceValue)
+      }
+    }
+
+    setFilteredData(filtered)
+  }
+
+  const handleClearFilters = () => {
+    setFilterDomain('')
+    setFilterExperience('')
+  }
+
+  const uniqueExperiences = Array.from(new Set(tableData.map(item => item.experience))).sort((a, b) => a - b)
+
   return (
-    <div>
-      <h1>Dashboard</h1>
-      <p>Welcome to the Dashboard</p>
+    <div className="dashboard-container">
+      {loading && <Loader message="Loading dashboard data..." />}
+      
+      <div className="dashboard-content">
+        <h1 className="dashboard-title">Dashboard</h1>
+        
+        <div className="filters-section">
+          <div className="filter-group">
+            <label htmlFor="domain-filter">Filter by Domain:</label>
+            <select
+              id="domain-filter"
+              className="filter-select"
+              value={filterDomain}
+              onChange={(e) => setFilterDomain(e.target.value)}
+            >
+              <option value="">All Domains</option>
+              {domains.map((domain: any) => (
+                <option key={domain._id || domain.id} value={domain.name || domain.domainName}>
+                  {domain.name || domain.domainName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label htmlFor="experience-filter">Filter by Experience:</label>
+            <select
+              id="experience-filter"
+              className="filter-select"
+              value={filterExperience}
+              onChange={(e) => setFilterExperience(e.target.value)}
+            >
+              <option value="">All Experience Levels</option>
+              {uniqueExperiences.map((exp) => (
+                <option key={exp} value={exp}>
+                  {exp} {exp === 1 ? 'year' : 'years'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(filterDomain || filterExperience) && (
+            <button 
+              className="clear-filters-button"
+              onClick={handleClearFilters}
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+
+        <div className="table-container">
+          <table className="dashboard-table">
+            <thead>
+              <tr>
+                <th>Domain</th>
+                <th>Experience (Years)</th>
+                <th>Score (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.length > 0 ? (
+                filteredData.map((row, index) => (
+                  <tr key={row._id || index}>
+                    <td>{row.domain}</td>
+                    <td>{row.experience}</td>
+                    <td>
+                      <div className="percent-cell">
+                        <span className="percent-value">{row.percent}%</span>
+                        <div className="percent-bar-container">
+                          <div 
+                            className="percent-bar" 
+                            style={{ width: `${row.percent}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3} className="no-data">
+                    {loading ? 'Loading...' : 'No data available'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredData.length > 0 && (
+          <div className="table-summary">
+            <p>Showing {filteredData.length} of {tableData.length} records</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 export default Dashboard
-
