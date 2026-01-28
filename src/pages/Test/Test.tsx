@@ -4,6 +4,7 @@ import axios from 'axios'
 import { AlertModal } from '../../utils/alertHelper'
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition'
 import Loader from '../../components/Loader/Loader'
+import ProctoringService, { SuspiciousActivity } from '../../utils/proctoring'
 import './Test.css'
 
 interface Question {
@@ -27,12 +28,25 @@ const Test = () => {
   const [baseAnswer, setBaseAnswer] = useState<string>('')
   const [isReadingQuestion, setIsReadingQuestion] = useState<boolean>(false)
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false)
+  const [setupProgress, setSetupProgress] = useState<string>('')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const fullscreenErrorShownRef = useRef<boolean>(false)
+  const fullscreenSupportedRef = useRef<boolean>(true)
   const [domain, setDomain] = useState<any>(null)
   const [experience, setExperience] = useState<any>(null);
   const [questionsDictionary, setQuestionsDictionary] = useState<any>(null);
+  
+  // Proctoring state
+  const proctoringServiceRef = useRef<ProctoringService | null>(null)
+  const [proctoringActive, setProctoringActive] = useState<boolean>(false)
+  const [violations, setViolations] = useState<number>(0)
+  const [monitoringStatus, setMonitoringStatus] = useState<{
+    webcam: boolean
+    screen: boolean
+    audio: boolean
+  }>({ webcam: false, screen: false, audio: false })
 
   const {
     transcript,
@@ -94,18 +108,29 @@ const Test = () => {
     window.addEventListener('beforeunload', handleBeforeUnload)
 
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [examStarted, submitting])
+
+  // Separate cleanup effect that only runs on unmount
+  useEffect(() => {
+    return () => {
+      // Only cleanup on actual component unmount
+      console.log('🧹 Component unmounting - cleaning up...')
       if (timerRef.current) clearTimeout(timerRef.current)
       if (intervalRef.current) clearInterval(intervalRef.current)
       if (speechSynthesisRef.current) {
         window.speechSynthesis.cancel()
       }
-      window.removeEventListener('beforeunload', handleBeforeUnload)
       // Exit fullscreen on unmount
       if (isFullscreen && document.fullscreenElement) {
         document.exitFullscreen().catch(() => {})
       }
+      // Stop proctoring on unmount
+      stopProctoring()
     }
-  }, [id, examStarted, submitting, isFullscreen])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty array = only on mount/unmount, not on dependency changes
 
   useEffect(() => {
     if (examStarted && questions.length > 0 && currentQuestionIndex < questions.length) {
@@ -114,6 +139,10 @@ const Test = () => {
       // Stop listening if active when switching questions
       if (listening) {
         SpeechRecognition.stopListening()
+        // Re-enable audio monitoring alerts when speech recognition stops
+        if (proctoringServiceRef.current) {
+          proctoringServiceRef.current.setSpeechRecognitionActive(false)
+        }
         resetTranscript()
       }
       // Read the question first, then start timer (only when question index changes)
@@ -122,12 +151,43 @@ const Test = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestionIndex, examStarted, questions.length])
 
-  // Enter fullscreen when exam starts
+  // Sync speech recognition state with proctoring service
   useEffect(() => {
-    if (examStarted && questions.length > 0) {
-      enterFullscreen()
+    if (proctoringServiceRef.current) {
+      proctoringServiceRef.current.setSpeechRecognitionActive(listening)
     }
-  }, [examStarted, questions.length])
+  }, [listening])
+
+  // Enter fullscreen when exam starts and keep it enforced
+  // COMMENTED OUT - Fullscreen enforcement disabled
+  // useEffect(() => {
+  //   // Only enforce fullscreen if exam is actually started (not during setup)
+  //   if (examStarted && questions.length > 0 && !loading) {
+  //     // Reset error flag when exam starts
+  //     fullscreenErrorShownRef.current = false
+  //     fullscreenSupportedRef.current = true
+  //     
+  //     // Set up a continuous check to ensure fullscreen stays active
+  //     const fullscreenCheckInterval = setInterval(() => {
+  //       if (examStarted && !submitting && fullscreenSupportedRef.current && !loading) {
+  //         const isCurrentlyFullscreen = !!(
+  //           document.fullscreenElement ||
+  //           (document as any).webkitFullscreenElement ||
+  //           (document as any).msFullscreenElement
+  //         )
+  //         
+  //         if (!isCurrentlyFullscreen) {
+  //           // Only try to re-enter if fullscreen is supported
+  //           enterFullscreen()
+  //         }
+  //       }
+  //     }, 2000) // Check every 2 seconds (reduced frequency)
+  //     
+  //     return () => {
+  //       clearInterval(fullscreenCheckInterval)
+  //     }
+  //   }
+  // }, [examStarted, questions.length, submitting, loading])
 
   const handleStartExam = async () => {
     if (id) {
@@ -138,35 +198,66 @@ const Test = () => {
   const getPreferredVoice = (): SpeechSynthesisVoice | null => {
     const voices = window.speechSynthesis.getVoices()
     
-    // Try to find a preferred voice (you can customize this)
-    // Options: female voice, specific language, or specific voice name
+    // Prioritize neural/premium voices for more realistic sound
     const preferredVoices = [
-      // English female voices (common names)
+      // Indian English Neural voices (highest priority for Indian accent)
       voices.find(voice => 
-        voice.name.includes('Samantha') || 
-        voice.name.includes('Karen') ||
-        voice.name.includes('Victoria') ||
-        voice.name.includes('Siri') ||
-        voice.name.includes('Zira')
+        (voice.name.includes('Neural') || voice.name.includes('neural')) &&
+        (voice.lang === 'en-IN' || voice.name.toLowerCase().includes('india') || voice.name.toLowerCase().includes('indian'))
       ),
-      // Any female voice
+      // Indian English Google voices
       voices.find(voice => 
-        voice.name.toLowerCase().includes('female') ||
-        voice.name.toLowerCase().includes('woman')
+        voice.name.includes('Google') && 
+        (voice.lang === 'en-IN' || voice.name.toLowerCase().includes('india') || voice.name.toLowerCase().includes('indian'))
       ),
-      // Google voices (usually good quality)
+      // Indian English Microsoft voices
+      voices.find(voice => 
+        voice.name.includes('Microsoft') && 
+        (voice.lang === 'en-IN' || voice.name.toLowerCase().includes('india') || voice.name.toLowerCase().includes('indian'))
+      ),
+      // Any Indian English voice
+      voices.find(voice => 
+        voice.lang === 'en-IN' || voice.name.toLowerCase().includes('india') || voice.name.toLowerCase().includes('indian')
+      ),
+      // Google Neural voices (most realistic)
+      voices.find(voice => 
+        (voice.name.includes('Neural') || voice.name.includes('neural')) &&
+        (voice.lang.startsWith('en') || voice.lang === 'en-US')
+      ),
+      // Microsoft Neural voices
+      voices.find(voice => 
+        (voice.name.includes('Microsoft') && voice.name.includes('Neural')) &&
+        (voice.lang.startsWith('en') || voice.lang === 'en-US')
+      ),
+      // Google voices (high quality)
       voices.find(voice => 
         voice.name.includes('Google') && 
         (voice.lang.startsWith('en') || voice.lang === 'en-US')
       ),
-      // Microsoft voices
+      // Premium voices (Samantha, Karen, Victoria - macOS)
+      voices.find(voice => 
+        (voice.name.includes('Samantha') || 
+         voice.name.includes('Karen') ||
+         voice.name.includes('Victoria') ||
+         voice.name.includes('Alex') ||
+         voice.name.includes('Siri')) &&
+        (voice.lang.startsWith('en') || voice.lang === 'en-US')
+      ),
+      // Microsoft voices (good quality)
       voices.find(voice => 
         voice.name.includes('Microsoft') && 
         (voice.lang.startsWith('en') || voice.lang === 'en-US')
       ),
+      // Any female voice with English
+      voices.find(voice => 
+        (voice.name.toLowerCase().includes('female') ||
+         voice.name.toLowerCase().includes('woman') ||
+         voice.name.includes('Zira')) &&
+        (voice.lang.startsWith('en') || voice.lang === 'en-US')
+      ),
       // Any English voice
       voices.find(voice => 
-        voice.lang.startsWith('en') || voice.lang === 'en-US'
+        voice.lang.startsWith('en') || voice.lang === 'en-US' || voice.lang === 'en-IN'
       ),
       // Fallback to first available voice
       voices[0]
@@ -194,12 +285,25 @@ const Test = () => {
         }
         
         setIsReadingQuestion(true)
-        const utterance = new SpeechSynthesisUtterance(questionText)
         
-        // Get and set preferred voice
+        // Get and set preferred voice first
         const voices = window.speechSynthesis.getVoices()
         const preferredVoice = getPreferredVoice()
         
+        // Process text for more natural speech with better pauses
+        const processedText = questionText
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .replace(/\. /g, '. ') // Ensure space after periods
+          .replace(/\? /g, '? ') // Ensure space after question marks
+          .replace(/\! /g, '! ') // Ensure space after exclamation marks
+          .replace(/, /g, ', ') // Ensure space after commas
+          .replace(/:/g, ': ') // Add space after colons
+          .replace(/;/g, '; ') // Add space after semicolons
+          .trim()
+        
+        const utterance = new SpeechSynthesisUtterance(processedText)
+        
+        // Set voice
         if (preferredVoice) {
           utterance.voice = preferredVoice
         } else if (voices.length > 0) {
@@ -207,11 +311,18 @@ const Test = () => {
           utterance.voice = voices[0]
         }
         
-        // Configure speech
-        utterance.rate = 0.9 // Slightly slower for clarity
-        utterance.pitch = 1.1 // Slightly higher pitch (more natural)
-        utterance.volume = 1
-        utterance.lang = preferredVoice?.lang || 'en-US' // Set language
+        // Configure speech for more realistic and natural sound
+        utterance.rate = 0.92 // Slightly slower for more natural, clear speech
+        utterance.pitch = 0.98 // Slightly lower pitch for more natural human-like sound
+        utterance.volume = 1.0 // Full volume
+        utterance.lang = preferredVoice?.lang || voices[0]?.lang || 'en-US' // Set language
+        
+        // Add slight variation for more naturalness (if supported)
+        // Some browsers support additional properties
+        if ('voiceURI' in utterance && preferredVoice) {
+          // Use the preferred voice's native settings
+          utterance.voice = preferredVoice
+        }
         
         // Start timer after question is read
         utterance.onend = () => {
@@ -314,21 +425,66 @@ const Test = () => {
 
   const enterFullscreen = async () => {
     try {
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen()
+      // Check if already in fullscreen
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).msFullscreenElement
+      )
+      
+      if (isCurrentlyFullscreen) {
         setIsFullscreen(true)
+        return
+      }
+      
+      // Request fullscreen with options to prevent exit
+      if (document.documentElement.requestFullscreen) {
+        // Modern browsers - use FullscreenOptions if available
+        const options: any = {}
+        try {
+          await document.documentElement.requestFullscreen(options)
+          setIsFullscreen(true)
+          fullscreenErrorShownRef.current = false // Reset error flag on success
+        } catch (err) {
+          // Fallback without options
+          await document.documentElement.requestFullscreen()
+          setIsFullscreen(true)
+          fullscreenErrorShownRef.current = false // Reset error flag on success
+        }
       } else if ((document.documentElement as any).webkitRequestFullscreen) {
         // Safari
-        await (document.documentElement as any).webkitRequestFullscreen()
+        await (document.documentElement as any).webkitRequestFullscreen((document.documentElement as any).webkitRequestFullscreenOptions?.ALLOW_KEYBOARD_INPUT || 0)
         setIsFullscreen(true)
+        fullscreenErrorShownRef.current = false // Reset error flag on success
       } else if ((document.documentElement as any).msRequestFullscreen) {
         // IE/Edge
         await (document.documentElement as any).msRequestFullscreen()
         setIsFullscreen(true)
+        fullscreenErrorShownRef.current = false // Reset error flag on success
+      } else {
+        // Fullscreen API not supported - only show alert once
+        if (!fullscreenErrorShownRef.current) {
+          fullscreenErrorShownRef.current = true
+          fullscreenSupportedRef.current = false // Stop trying
+          AlertModal.warning('Fullscreen API not supported. Please maximize your browser window manually.', 5000)
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error entering fullscreen:', error)
-      // Continue even if fullscreen fails
+      
+      // Only show error alert once
+      if (!fullscreenErrorShownRef.current) {
+        fullscreenErrorShownRef.current = true
+        
+        // If user denied or permission error, stop trying
+        if (error.name === 'NotAllowedError' || error.message?.includes('permission')) {
+          fullscreenSupportedRef.current = false // Stop trying
+          AlertModal.warning('Fullscreen permission denied. The exam requires fullscreen mode. Please allow fullscreen and refresh.', 5000)
+        } else {
+          // For other errors, still try but don't spam alerts
+          AlertModal.warning('Could not enter fullscreen mode. Please maximize your browser window.', 3000)
+        }
+      }
     }
   }
 
@@ -349,40 +505,271 @@ const Test = () => {
     }
   }
 
-  // Handle fullscreen change events
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
+  // Handle fullscreen change events and prevent exit during exam
+  // COMMENTED OUT - Fullscreen enforcement disabled
+  // useEffect(() => {
+  //   const handleFullscreenChange = () => {
+  //     const isCurrentlyFullscreen = !!(
+  //       document.fullscreenElement ||
+  //       (document as any).webkitFullscreenElement ||
+  //       (document as any).msFullscreenElement
+  //     )
+  //     
+  //     setIsFullscreen(isCurrentlyFullscreen)
+  //     
+  //     // If exam is active and user exited fullscreen, force re-enter immediately
+  //     if (examStarted && !submitting && !isCurrentlyFullscreen) {
+  //       AlertModal.warning('Fullscreen mode is required during the exam. Re-entering fullscreen...', 2000)
+  //       // Re-enter fullscreen immediately
+  //       setTimeout(() => {
+  //         enterFullscreen()
+  //       }, 100)
+  //     }
+  //   }
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
-    document.addEventListener('msfullscreenchange', handleFullscreenChange)
+  //   // Block ESC key and F11 to prevent exiting fullscreen during exam
+  //   const handleKeyDown = (e: KeyboardEvent) => {
+  //     if (examStarted && !submitting) {
+  //       const isCurrentlyFullscreen = !!(
+  //         document.fullscreenElement ||
+  //         (document as any).webkitFullscreenElement ||
+  //         (document as any).msFullscreenElement
+  //       )
+  //       
+  //       // Block ESC key when in fullscreen
+  //       if (e.key === 'Escape' && isCurrentlyFullscreen) {
+  //         e.preventDefault()
+  //         e.stopPropagation()
+  //         e.stopImmediatePropagation()
+  //         AlertModal.warning('You cannot exit fullscreen mode during the exam.', 3000)
+  //         return false
+  //       }
+  //       
+  //       // Block F11 (fullscreen toggle key)
+  //       if (e.key === 'F11') {
+  //         e.preventDefault()
+  //         e.stopPropagation()
+  //         e.stopImmediatePropagation()
+  //         AlertModal.warning('Fullscreen mode cannot be toggled during the exam.', 3000)
+  //         return false
+  //       }
+  //       
+  //       // Block Alt+Tab, Alt+F4, Ctrl+W, Ctrl+Shift+W (common exit shortcuts)
+  //       if (
+  //         (e.altKey && e.key === 'Tab') ||
+  //         (e.altKey && e.key === 'F4') ||
+  //         (e.ctrlKey && e.key === 'w') ||
+  //         (e.ctrlKey && e.shiftKey && e.key === 'W')
+  //       ) {
+  //         if (isCurrentlyFullscreen) {
+  //           e.preventDefault()
+  //           e.stopPropagation()
+  //           AlertModal.warning('You cannot exit fullscreen or close the browser during the exam.', 3000)
+  //           return false
+  //         }
+  //       }
+  //     }
+  //   }
 
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
-      document.removeEventListener('msfullscreenchange', handleFullscreenChange)
+  //   // Block context menu (right-click) to prevent fullscreen exit options
+  //   const handleContextMenu = (e: MouseEvent) => {
+  //     if (examStarted && !submitting) {
+  //       const isCurrentlyFullscreen = !!(
+  //         document.fullscreenElement ||
+  //         (document as any).webkitFullscreenElement ||
+  //         (document as any).msFullscreenElement
+  //       )
+  //       
+  //       if (isCurrentlyFullscreen) {
+  //         e.preventDefault()
+  //         e.stopPropagation()
+  //         AlertModal.warning('Right-click is disabled during the exam.', 2000)
+  //         return false
+  //       }
+  //     }
+  //   }
+
+  //   // Block text selection and drag (additional security)
+  //   const handleSelectStart = (e: Event) => {
+  //     if (examStarted && !submitting) {
+  //       // Allow selection in textarea for answering
+  //       const target = e.target as HTMLElement
+  //       if (target.tagName !== 'TEXTAREA' && target.tagName !== 'INPUT') {
+  //         e.preventDefault()
+  //         return false
+  //       }
+  //     }
+  //   }
+
+  //   document.addEventListener('fullscreenchange', handleFullscreenChange)
+  //   document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+  //   document.addEventListener('msfullscreenchange', handleFullscreenChange)
+  //   document.addEventListener('keydown', handleKeyDown, true) // Use capture phase to catch early
+  //   document.addEventListener('contextmenu', handleContextMenu, true)
+  //   document.addEventListener('selectstart', handleSelectStart, true)
+
+  //   return () => {
+  //     document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  //     document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+  //     document.removeEventListener('msfullscreenchange', handleFullscreenChange)
+  //     document.removeEventListener('keydown', handleKeyDown, true)
+  //     document.removeEventListener('contextmenu', handleContextMenu, true)
+  //     document.removeEventListener('selectstart', handleSelectStart, true)
+  //   }
+  // }, [examStarted, submitting])
+
+  // Start proctoring system
+  const startProctoring = async () => {
+    try {
+      const proctoringConfig = {
+        enableBrowserLockdown: true,
+        enableWebcam: true,
+        // Audio monitoring removed - focus on camera/webcam only
+        enableAudioMonitoring: false,
+        recordSessions: true,
+        // Optional: Enable Python AI backend for advanced analysis
+        // Uncomment and configure if you have Python backend running
+        // pythonAI: {
+        //   enabled: true,
+        //   apiUrl: 'http://localhost:8001', // Python backend URL
+        //   sendVideoFrames: true,
+        //   sendAudioChunks: true,
+        //   frameInterval: 1000, // Send frame every 1 second
+        //   audioChunkInterval: 2000 // Send audio chunk every 2 seconds
+        // }
+      }
+
+      const proctoringService = new ProctoringService(proctoringConfig)
+      proctoringServiceRef.current = proctoringService
+
+      // Handle suspicious activities
+      const handleSuspiciousActivity = (activity: SuspiciousActivity) => {
+        setViolations(prev => prev + 1)
+        
+        // Show alert based on severity
+        AlertModal.warning(
+          `⚠️ ${activity.description}`,
+          4000
+        )
+      }
+
+      const handleViolation = (count: number) => {
+        setViolations(count)
+      }
+
+      // Start monitoring
+      await proctoringService.startMonitoring(handleSuspiciousActivity, handleViolation)
+      
+      setProctoringActive(true)
+      
+      // Update monitoring status
+      const state = proctoringService.getState()
+      console.log('Proctoring state after start:', state)
+      setMonitoringStatus({
+        webcam: state.webcamActive,
+        screen: false, // Screen sharing removed
+        audio: false
+      })
+      
+      // Log monitoring status
+      console.log('Monitoring status:', {
+        webcam: state.webcamActive,
+        audio: false,
+        isMonitoring: state.isMonitoring
+      })
+      
+      if (!state.webcamActive && !state.audioMonitoringActive) {
+        console.warn('⚠️ WARNING: Neither webcam nor audio monitoring is active!')
+        AlertModal.warning('Monitoring may not be working properly. Please check camera and microphone permissions.', 5000)
+      } else if (!state.webcamActive) {
+        console.warn('⚠️ WARNING: Webcam monitoring is not active!')
+        AlertModal.warning('Webcam monitoring is not active. Please check camera permissions.', 4000)
+      } else if (!state.audioMonitoringActive) {
+        console.warn('⚠️ WARNING: Audio monitoring is not active!')
+        AlertModal.warning('Audio monitoring is not active. Please check microphone permissions.', 4000)
+      }
+
+      // Re-enter fullscreen if it was exited during proctoring setup
+      // COMMENTED OUT - Fullscreen enforcement disabled
+      // const isCurrentlyFullscreen = !!(
+      //   document.fullscreenElement ||
+      //   (document as any).webkitFullscreenElement ||
+      //   (document as any).msFullscreenElement
+      // )
+      
+      // if (!isCurrentlyFullscreen) {
+      //   // Small delay then re-enter fullscreen
+      //   setTimeout(() => {
+      //     enterFullscreen()
+      //   }, 500)
+      // }
+
+      AlertModal.success('Proctoring system activated. All activities are being monitored.', 3000)
+    } catch (error: any) {
+      console.error('Error starting proctoring:', error)
+      AlertModal.warning('Some proctoring features could not be activated. Exam will continue.', 4000)
+      
+      // Re-enter fullscreen if it was exited
+      // COMMENTED OUT - Fullscreen enforcement disabled
+      // const isCurrentlyFullscreen = !!(
+      //   document.fullscreenElement ||
+      //   (document as any).webkitFullscreenElement ||
+      //   (document as any).msFullscreenElement
+      // )
+      
+      // if (!isCurrentlyFullscreen) {
+      //   setTimeout(() => {
+      //     enterFullscreen()
+      //   }, 500)
+      // }
+      // Continue exam even if proctoring fails
     }
-  }, [])
+  }
+
+  // Stop proctoring
+  const stopProctoring = () => {
+    if (proctoringServiceRef.current) {
+      proctoringServiceRef.current.stopMonitoring()
+      proctoringServiceRef.current = null
+      setProctoringActive(false)
+      setMonitoringStatus({ webcam: false, screen: false, audio: false })
+    }
+  }
 
   const fetchQuestions = async (testId: string) => {
     setLoading(true)
+    setSetupProgress('Loading questions...')
     try {
-      const response = await axios.get(`http://192.168.1.45:3000/question/${testId}`)
+      // Load questions
+      const response = await axios.get(`http://localhost:3000/question/${testId}`)
       
       if (response.data.success) {
         setDomain(response.data.data.tblDomainJobDescription_id.domain.domainName)
         setExperience(response.data.data.tblDomainJobDescription_id.required_exeperience)
         setQuestionsDictionary(response.data.data._id)
         const questionData = response.data.data.question
-        // Handle both array and single question
         const questionsArray = Array.isArray(questionData) ? questionData : [questionData]
         setQuestions(questionsArray)
-        // Initialize answers array with empty strings
         setAnswers(new Array(questionsArray.length).fill(''))
+        
+        // Now do all setup in sequence
+        setSetupProgress('Requesting permissions...')
+        await requestAllPermissions()
+        
+        // COMMENTED OUT - Fullscreen enforcement disabled
+        // setSetupProgress('Entering fullscreen...')
+        // await enterFullscreen()
+        // await new Promise(resolve => setTimeout(resolve, 500))
+        
+        setSetupProgress('Starting proctoring...')
+        await startProctoring()
+        
+        setSetupProgress('Starting exam...')
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Finally start the exam
         setExamStarted(true)
-        AlertModal.success('Exam started! Entering fullscreen mode...', 2000)
+        setSetupProgress('')
       } else {
         AlertModal.error(response.data.message || 'Failed to fetch questions', 5000)
       }
@@ -391,6 +778,43 @@ const Test = () => {
       AlertModal.error(errorMessage, 5000)
     } finally {
       setLoading(false)
+      setSetupProgress('')
+    }
+  }
+
+  // Request all necessary permissions before fullscreen
+  const requestAllPermissions = async (): Promise<void> => {
+    try {
+      // Request ONLY webcam permission during setup (audio monitoring removed).
+      // Mic permission will be requested only when user clicks "Start Voice Input".
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: 'user'
+          }
+        })
+        console.log('Permissions granted successfully')
+        console.log('Video tracks:', stream.getVideoTracks().length)
+        
+        // Stop the stream immediately - we just needed permission
+        // Proctoring service will request its own fresh stream
+        stream.getTracks().forEach(track => {
+          track.stop()
+          console.log('Stopped permission track:', track.kind, track.label)
+        })
+        
+        // Small delay to ensure permissions are fully set
+        await new Promise(resolve => setTimeout(resolve, 200))
+      } catch (error: any) {
+        console.error('Permission error:', error)
+        console.error('Error name:', error.name)
+        console.error('Error message:', error.message)
+        // Continue even if permissions are denied - proctoring will handle it
+      }
+    } catch (error: any) {
+      console.error('Error requesting permissions:', error)
     }
   }
 
@@ -497,6 +921,11 @@ const Test = () => {
           language: 'en-US'
         })
         console.log('Speech recognition started successfully')
+        
+        // Disable audio monitoring alerts when speech recognition is active
+        if (proctoringServiceRef.current) {
+          proctoringServiceRef.current.setSpeechRecognitionActive(true)
+        }
       } catch (startError: any) {
         console.error('Error calling startListening:', startError)
         AlertModal.error('Failed to start voice input. Please try again.', 3000)
@@ -509,6 +938,12 @@ const Test = () => {
 
   const handleStopListening = () => {
     SpeechRecognition.stopListening()
+    
+    // Re-enable audio monitoring alerts when speech recognition stops
+    if (proctoringServiceRef.current) {
+      proctoringServiceRef.current.setSpeechRecognitionActive(false)
+    }
+    
     // Combine base answer with final transcript and save
     const finalAnswer = (baseAnswer + (baseAnswer && transcript ? ' ' : '') + transcript).trim()
     setAnswers(prev => {
@@ -564,6 +999,12 @@ const Test = () => {
         return newAnswers
       })
       SpeechRecognition.stopListening()
+      
+      // Re-enable audio monitoring alerts when speech recognition stops
+      if (proctoringServiceRef.current) {
+        proctoringServiceRef.current.setSpeechRecognitionActive(false)
+      }
+      
       resetTranscript()
       setBaseAnswer('')
     } else {
@@ -575,6 +1016,9 @@ const Test = () => {
         return newAnswers
       })
     }
+
+    // Stop proctoring
+    stopProctoring()
 
     // Exit fullscreen
     await exitFullscreen()
@@ -598,7 +1042,7 @@ const Test = () => {
       const response = await axios.post('http://192.168.1.6:8000/evaluate-answers', submissionData)
       
       if (response.data.success) {
-        await axios.post('http://192.168.1.45:3000/candidate-answer', {
+        await axios.post('http://localhost:3000/candidate-answer', {
           candidate_id: id,
           answer: response.data.evaluations,
           tblQuestionsDictionary_id: questionsDictionary,
@@ -660,7 +1104,17 @@ const Test = () => {
   }
 
   if (loading) {
-    return <Loader message="Loading exam questions..." />
+    return (
+      <div className="test-container">
+        <div className="setup-screen">
+          <div className="setup-content">
+            <div className="setup-spinner"></div>
+            <h2 className="setup-title">Preparing Your Exam</h2>
+            <p className="setup-message">{setupProgress || 'Please wait...'}</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (questions.length === 0 && examStarted) {
@@ -704,6 +1158,31 @@ const Test = () => {
                 </div>
               )}
             </div>
+            {/* Proctoring Status Indicator */}
+            {proctoringActive && (
+              <div className="proctoring-status">
+                <div className="proctoring-indicator">
+                  <span className="proctoring-icon">🔒</span>
+                  <span className="proctoring-text">Monitoring Active</span>
+                </div>
+                {violations > 0 && (
+                  <div className="violations-badge">
+                    ⚠️ {violations} violation{violations !== 1 ? 's' : ''}
+                  </div>
+                )}
+                <div className="monitoring-details">
+                  {monitoringStatus.webcam ? (
+                    <span className="monitoring-item" title="Webcam Monitoring Active">📹</span>
+                  ) : (
+                    <span className="monitoring-item inactive" title="Webcam Monitoring Inactive">📹❌</span>
+                  )}
+                </div>
+                {/* Debug info - remove in production */}
+                <div style={{ fontSize: '0.7rem', marginTop: '4px', opacity: 0.7 }}>
+                  Webcam: {monitoringStatus.webcam ? '✅' : '❌'}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="question-section">

@@ -50,7 +50,8 @@
   font-size: 0.9rem;
 }
 
-.filter-select {
+.filter-select,
+.filter-input {
   padding: 0.75rem;
   border: 1px solid #ddd;
   border-radius: 6px;
@@ -59,9 +60,19 @@
   background: white;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
-.filter-select:focus {
+.filter-select {
+  cursor: pointer;
+}
+
+.filter-input {
+  cursor: text;
+}
+
+.filter-select:focus,
+.filter-input:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -91,19 +102,45 @@
 
 .table-container {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 70vh;
   border-radius: 8px;
   border: 1px solid #e0e0e0;
+  position: relative;
+}
+
+.table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #764ba2;
 }
 
 .dashboard-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: white;
 }
 
 .dashboard-table thead {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .dashboard-table th {
@@ -249,6 +286,18 @@
 
   .table-summary {
     color: #ccc;
+  }
+
+  .table-container::-webkit-scrollbar-track {
+    background: #333;
+  }
+
+  .table-container::-webkit-scrollbar-thumb {
+    background: #667eea;
+  }
+
+  .table-container::-webkit-scrollbar-thumb:hover {
+    background: #764ba2;
   }
 }
 

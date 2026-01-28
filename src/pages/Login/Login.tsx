@@ -43,7 +43,7 @@ const Login = () => {
 
     setLoading(true)
     try {
-      const response = await axios.post('http://192.168.1.45:3000/login', {
+      const response = await axios.post('http://localhost:3000/login', {
         email: email.trim(),
         password: password.trim(),
       })

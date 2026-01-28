@@ -18,7 +18,7 @@ const JobDescription = () => {
 
   const fetchDomains = async () => {
     setLoading(true)
-    const response = await axios.get('http://192.168.1.45:3000/domain-list')
+    const response = await axios.get('http://localhost:3000/domain-list')
     if (response.data.success) {
       console.log(response.data.data)
       setDomains(response.data.data)
@@ -34,7 +34,7 @@ const JobDescription = () => {
     e.preventDefault()
     setLoading(true)
     try {
-      const response = await axios.post('http://192.168.1.45:3000/domain-job-description', {
+      const response = await axios.post('http://localhost:3000/domain-job-description', {
         domain: selectedDomain,
         required_exeperience: Number(requiredExperience),
         job_description: jobDescription,
@@ -97,7 +97,7 @@ const JobDescription = () => {
             className="form-textarea"
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
-            rows={10}
+            rows={3}
           />
         </div>
 

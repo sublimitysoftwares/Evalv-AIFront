@@ -28,6 +28,8 @@
   margin-bottom: 1rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid #e0e0e0;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .exam-info {
@@ -521,6 +523,75 @@
   .exam-navigation {
     border-top-color: #444;
   }
+
+  .proctoring-status {
+    background-color: #1a1a1a;
+    border-color: #444;
+  }
+
+  .proctoring-text {
+    color: #ccc;
+  }
+
+  .violations-badge {
+    background-color: #3a2a00;
+    color: #ff9800;
+  }
+}
+
+/* Proctoring Status Styles */
+.proctoring-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border: 2px solid #646cff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(100, 108, 255, 0.15);
+}
+
+.proctoring-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.proctoring-icon {
+  font-size: 1.2rem;
+}
+
+.proctoring-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #646cff;
+}
+
+.violations-badge {
+  padding: 0.25rem 0.75rem;
+  background-color: #fff3cd;
+  color: #ff9800;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #ff9800;
+}
+
+.monitoring-details {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.monitoring-item {
+  font-size: 1.1rem;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.monitoring-item:hover {
+  opacity: 1;
 }
 
 @media (max-width: 768px) {
@@ -548,5 +619,101 @@
 
   .nav-button {
     width: 100%;
+  }
+
+  .proctoring-webcam-preview {
+    width: 150px !important;
+    height: 112px !important;
+    top: 10px !important;
+    right: 10px !important;
+  }
+}
+
+/* Setup Screen Styles */
+.setup-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+}
+
+.setup-content {
+  text-align: center;
+  color: white;
+  max-width: 500px;
+}
+
+.setup-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 2rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.setup-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.setup-message {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  color: white;
+}
+
+/* Proctoring Webcam Preview Styles */
+.proctoring-webcam-preview {
+  position: fixed !important;
+  top: 50px !important;
+  right: 20px !important;
+  width: 200px !important;
+  height: 150px !important;
+  border: 3px solid #646cff !important;
+  border-radius: 0 0 12px 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  z-index: 9999 !important;
+  background-color: #000 !important;
+  object-fit: cover !important;
+  transition: all 0.3s ease !important;
+}
+
+.proctoring-webcam-preview:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px rgba(100, 108, 255, 0.5) !important;
+}
+
+/* Webcam Label Styles */
+.proctoring-webcam-label {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  width: 200px !important;
+  padding: 4px 8px !important;
+  background: linear-gradient(135deg, #646cff 0%, #764ba2 100%) !important;
+  color: white !important;
+  border-radius: 12px 12px 0 0 !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  z-index: 10000 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .proctoring-webcam-preview {
+    border-color: #646cff !important;
   }
 }

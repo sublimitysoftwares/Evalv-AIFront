@@ -20,7 +20,7 @@ const ApplicationForm = () => {
   const fetchJobDescriptions = async () => {
     setFetchingJobs(true)
     try {
-      const response = await axios.get('http://192.168.1.45:3000/domain-job-description')
+      const response = await axios.get('http://localhost:3000/domain-job-description')
       if (response.data.success) {
         setJobDescriptions(response.data.data)
       } else {
@@ -63,7 +63,7 @@ const ApplicationForm = () => {
 
     setLoading(true)
     try {
-      const response = await axios.post('http://192.168.1.45:3000/interview-candidate', {
+      const response = await axios.post('http://localhost:3000/interview-candidate', {
         name: name.trim(),
         email_address: email.trim(),
         tblDomainJobDescription_id: selectedJobDescription,
@@ -96,16 +96,16 @@ const ApplicationForm = () => {
       })
       if (response.data.success) {
         let questions = response.data.questions;
-        await axios.post(`http://192.168.1.45:3000/question`, {
+        await axios.post(`http://localhost:3000/question`, {
           tblDomainJobDescription_id: selectedJobDescription,
            question: questions, 
            tblInterviewCandidate_id: id
         })
         if (response.data.success) {
           AlertModal.success(response.data.message || 'Questions generated successfully!', 5000);
-          await axios.post(`http://192.168.1.45:3000/interview-candidate/send-invite`, {
+          await axios.post(`http://localhost:3000/interview-candidate/send-invite`, {
               candidateId: id,
-              url: 'http://192.168.1.48:5173/test/'+id
+              url: 'http://localhost:5173/test/'+id
           });
           if (response.data.success) {
             AlertModal.success(response.data.message || 'Invite sent successfully!', 5000);

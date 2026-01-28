@@ -3,10 +3,30 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  padding: 2rem;
+  padding: 0 2rem 2rem 2rem;
   background: radial-gradient(circle at 10% 20%, rgb(239, 246, 255) 0%, rgb(219, 234, 254) 90%);
   flex-direction: column;
   gap: 2rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.job-description-container::-webkit-scrollbar {
+  width: 10px;
+}
+
+.job-description-container::-webkit-scrollbar-track {
+  background: rgba(241, 241, 241, 0.5);
+  border-radius: 5px;
+}
+
+.job-description-container::-webkit-scrollbar-thumb {
+  background: #646cff;
+  border-radius: 5px;
+}
+
+.job-description-container::-webkit-scrollbar-thumb:hover {
+  background: #535bf2;
 }
 
 .job-description-header h1 {
@@ -120,8 +140,28 @@
 
 .form-textarea {
   resize: vertical;
-  min-height: 150px;
+  min-height: 100px;
+  max-height: 250px;
   line-height: 1.5;
+  overflow-y: auto;
+}
+
+.form-textarea::-webkit-scrollbar {
+  width: 8px;
+}
+
+.form-textarea::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.form-textarea::-webkit-scrollbar-thumb {
+  background: #646cff;
+  border-radius: 4px;
+}
+
+.form-textarea::-webkit-scrollbar-thumb:hover {
+  background: #535bf2;
 }
 
 .submit-button {
@@ -158,6 +198,18 @@
     background: radial-gradient(circle at 10% 20%, #1e293b 0%, #0f172a 90%);
   }
 
+  .job-description-container::-webkit-scrollbar-track {
+    background: rgba(51, 51, 51, 0.5);
+  }
+
+  .job-description-container::-webkit-scrollbar-thumb {
+    background: #646cff;
+  }
+
+  .job-description-container::-webkit-scrollbar-thumb:hover {
+    background: #535bf2;
+  }
+
   .job-description-form {
     background: rgba(30, 41, 59, 0.4);
     border-color: rgba(255, 255, 255, 0.05);
@@ -177,6 +229,18 @@
     background-color: #1a1a1a;
     border-color: #444;
     color: #fff;
+  }
+
+  .form-textarea::-webkit-scrollbar-track {
+    background: #333;
+  }
+
+  .form-textarea::-webkit-scrollbar-thumb {
+    background: #646cff;
+  }
+
+  .form-textarea::-webkit-scrollbar-thumb:hover {
+    background: #535bf2;
   }
 
   .form-select:focus,
